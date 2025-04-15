@@ -111,6 +111,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = false;
         state.user = null;
+        state.authChecked = false;
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
@@ -126,12 +127,14 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload;
+        state.authChecked = true; 
       })
       .addCase(fetchUser.rejected, (state, action) => {
         state.loading = false;
         state.isAuthenticated = false;
         state.user = null;
         state.error = action.payload;
+        state.authChecked = true;
       });
   },
 });
