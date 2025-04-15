@@ -1,0 +1,32 @@
+/* index.css */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Custom styles */
+@layer components {
+  /* Your custom component styles here */
+}
+
+@layer utilities {
+  /* Your custom utility styles here */
+}
+
+/* Animation for loading dots */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+/* Other global styles */
+body {
+  font-family: 'Inter', sans-serif;
+}
