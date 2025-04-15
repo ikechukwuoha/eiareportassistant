@@ -699,19 +699,24 @@
 
 
 
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader, Phone, Building } from 'lucide-react';
 import { registerUser, clearError } from '../../redux/slices/authSlice';
 
 export function SignupForm() {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    other_name: '',
+    phone: '',
+    email: '',
+    department: '',
+    division: '',
+    password: '',
+    passwordConfirm: ''
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const navigate = useNavigate();
@@ -727,26 +732,42 @@ export function SignupForm() {
     }
   }, [isAuthenticated, navigate]);
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+
   const validateForm = () => {
     const errors = {};
     
-    if (!firstName.trim()) errors.firstName = 'First name is required';
-    if (!lastName.trim()) errors.lastName = 'Last name is required';
+    if (!formData.first_name.trim()) errors.first_name = 'First name is required';
+    if (!formData.last_name.trim()) errors.last_name = 'Last name is required';
     
-    if (!email.trim()) {
+    if (!formData.email.trim()) {
       errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Email is invalid';
     }
     
-    if (!password) {
-      errors.password = 'Password is required';
-    } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
+    if (!formData.phone.trim()) {
+      errors.phone = 'Phone number is required';
     }
     
-    if (password !== confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
+    if (!formData.department.trim()) {
+      errors.department = 'Department is required';
+    }
+    
+    if (!formData.password) {
+      errors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      errors.password = 'Password must be at least 8 characters';
+    }
+    
+    if (formData.password !== formData.passwordConfirm) {
+      errors.passwordConfirm = 'Passwords do not match';
     }
     
     setValidationErrors(errors);
@@ -764,12 +785,7 @@ export function SignupForm() {
     dispatch(clearError());
     
     // Dispatch register action
-    dispatch(registerUser({ 
-      firstName, 
-      lastName, 
-      email, 
-      password 
-    }));
+    dispatch(registerUser(formData));
   };
   
   return (
@@ -795,7 +811,7 @@ export function SignupForm() {
             )}
             
             <div className="space-y-4">
-              {/* First Name & Last Name (side by side) */}
+              {/* First Name & Other Name (side by side) */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
@@ -805,50 +821,145 @@ export function SignupForm() {
                     </div>
                     <input
                       type="text"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={handleChange}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
                       placeholder="First name"
                     />
                   </div>
-                  {validationErrors.firstName && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.firstName}</p>
+                  {validationErrors.first_name && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.first_name}</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
-                    placeholder="Last name"
-                  />
-                  {validationErrors.lastName && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.lastName}</p>
-                  )}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Other Name <span className="text-gray-400 text-xs">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <User size={18} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="other_name"
+                      value={formData.other_name}
+                      onChange={handleChange}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
+                      placeholder="Other name"
+                    />
+                  </div>
                 </div>
               </div>
               
-              {/* Email Field */}
+              {/* Last Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User size={18} className="text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
+                    placeholder="Last name"
+                  />
+                </div>
+                {validationErrors.last_name && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.last_name}</p>
+                )}
+              </div>
+              
+              {/* Phone Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Phone size={18} className="text-gray-400" />
+                  </div>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
+                    placeholder="Phone number"
+                    required
+                  />
+                </div>
+                {validationErrors.phone && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.phone}</p>
+                )}
+              </div>
+              
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Mail size={18} className="text-gray-400" />
                   </div>
                   <input
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
                     placeholder="Your email address"
+                    required
                   />
                 </div>
                 {validationErrors.email && (
                   <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
                 )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Department */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Building size={18} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="department"
+                      value={formData.department}
+                      onChange={handleChange}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
+                      placeholder="Your department"
+                      required
+                    />
+                  </div>
+                  {validationErrors.department && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.department}</p>
+                  )}
+                </div>
+                
+                {/* Division */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Division <span className="text-gray-400 text-xs">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Building size={18} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="division"
+                      value={formData.division}
+                      onChange={handleChange}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
+                      placeholder="Your division"
+                    />
+                  </div>
+                </div>
               </div>
               
               {/* Password Field */}
@@ -860,8 +971,9 @@ export function SignupForm() {
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
                     className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
                     placeholder="Create a password"
                   />
@@ -887,14 +999,15 @@ export function SignupForm() {
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    name="passwordConfirm"
+                    value={formData.passwordConfirm}
+                    onChange={handleChange}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
                     placeholder="Confirm your password"
                   />
                 </div>
-                {validationErrors.confirmPassword && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
+                {validationErrors.passwordConfirm && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.passwordConfirm}</p>
                 )}
               </div>
               
