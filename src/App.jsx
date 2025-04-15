@@ -128,8 +128,17 @@ const ProtectedLayout = () => {
 
 // App component with Redux Provider
 function AppContent() {
-  const { isAuthenticated, loading } = useSelector(state => state.auth);
+  const { isAuthenticated, loading, authChecked } = useSelector(state => state.auth);
   console.log(loading)
+
+  // 🔁 Show loading spinner while checking auth status
+  if (!authChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-gray-50 text-gray-900">
@@ -163,6 +172,7 @@ function AppContent() {
     </div>
   );
 }
+
 
 export default function App() {
   return (
