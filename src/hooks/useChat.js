@@ -50,81 +50,119 @@ function useChat() {
   const formatApiResult = (apiResult) => {
     if (!apiResult) return "I've received your document and am processing it.";
     
-    // Check if the API result has the overall_review property (which contains the executive summary)
+    let formattedOutput = "# EIA Document Review Report\n\n";
+    
+    // Add overall review (executive summary) section
     if (apiResult.overall_review) {
-      return apiResult.overall_review;
+      formattedOutput += "## Executive Summary\n\n";
+      formattedOutput += apiResult.overall_review + "\n\n";
     }
     
-    // If no overall_review, create a comprehensive summary from section_reviews
+    // Add document structure overview - MODIFIED FOR VERTICAL LAYOUT
+    if (apiResult.document_structure) {
+      formattedOutput += "## Document Structure\n\n";
+      const structure = apiResult.document_structure;
+      
+      // Create vertical list instead of table
+      Object.keys(structure).sort().forEach(key => {
+        if (key.startsWith('has_')) {
+          const sectionName = key.replace('has_', '').replace(/_/g, ' ');
+          const formattedSectionName = sectionName.charAt(0).toUpperCase() + sectionName.slice(1);
+          // Use cleaner format with better spacing and bullet symbols
+          const statusSymbol = structure[key] ? '✓' : '✗'; // Using cleaner check/cross marks
+          formattedOutput += `${formattedSectionName} | ${statusSymbol}\n`;
+        }
+      });
+      formattedOutput += "\n";
+    }
+    
+    // Add detailed section reviews - render each section
     if (apiResult.section_reviews) {
-      let summary = "# EIA Document Review Summary\n\n";
-      
-      // Add document structure overview
-      if (apiResult.document_structure) {
-        summary += "## Document Structure\n\n";
-        const structure = apiResult.document_structure;
-        Object.keys(structure).sort().forEach(key => {
-          if (key.startsWith('has_')) {
-            const sectionName = key.replace('has_', '').replace(/_/g, ' ');
-            summary += `- **${sectionName}**: ${structure[key] ? '✅ Present' : '❌ Not present'}\n`;
-          }
-        });
-        summary += "\n";
-      }
-      
-      // Add section review highlights
-      summary += "## Section Reviews\n\n";
+      formattedOutput += "## Section Reviews\n\n";
       const reviews = apiResult.section_reviews;
       
       Object.keys(reviews).sort().forEach(sectionKey => {
-        // Skip sections that are not found in the document
-        if (Array.isArray(reviews[sectionKey]) && reviews[sectionKey].some(item => item.error)) {
+        const sectionName = sectionKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        formattedOutput += `### ${sectionName}\n\n`;
+        
+        // Handle error case (section not found)
+        if (Array.isArray(reviews[sectionKey]) && reviews[sectionKey].length > 0 && reviews[sectionKey][0].error) {
+          formattedOutput += `⚠️ ${reviews[sectionKey][0].error}\n\n`;
           return;
         }
         
+        // Process each review criterion for the section
         if (Array.isArray(reviews[sectionKey])) {
-          const validReviews = reviews[sectionKey].filter(review => !review.error);
-          
-          if (validReviews.length > 0) {
-            const sectionName = sectionKey.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
-            summary += `### ${sectionName}\n\n`;
-            
-            // Compliance statistics
-            const compliantCount = validReviews.filter(r => r.compliance === "Compliant").length;
-            const partialCount = validReviews.filter(r => r.compliance === "Partially compliant").length;
-            const nonCompliantCount = validReviews.filter(r => r.compliance === "Non-compliant").length;
-            const unknownCount = validReviews.filter(r => r.compliance === "Unable to determine").length;
-            
-            summary += `**Compliance Status**: ${compliantCount} compliant, ${partialCount} partially compliant, ${nonCompliantCount} non-compliant, ${unknownCount} undetermined\n\n`;
-            
-            // Add details of non-compliant items
-            if (nonCompliantCount > 0) {
-              summary += "**Non-compliant criteria:**\n\n";
-              validReviews.filter(r => r.compliance === "Non-compliant").forEach(review => {
-                summary += `- ${review.criterion}\n`;
-                if (review.explanation) {
-                  const cleanExplanation = review.explanation
-                    .replace(/\'Partially compliant\'|\'Non-compliant\'/g, '')
-                    .replace(/\n\n/g, ' ')
-                    .trim();
-                  summary += `  - ${cleanExplanation}\n`;
-                }
-              });
-              summary += "\n";
+          reviews[sectionKey].forEach(review => {
+            if (!review.error) {
+              // Format compliance status with appropriate emoji
+              let statusEmoji = '❓';
+              if (review.compliance === "Compliant") statusEmoji = '✓';
+              else if (review.compliance === "Partially compliant") statusEmoji = '⚠️';
+              else if (review.compliance === "Non-compliant") statusEmoji = '✗';
+              
+              formattedOutput += `#### ${statusEmoji} ${review.criterion}\n\n`;
+              formattedOutput += `**Status**: ${review.compliance}\n\n`;
+              
+              if (review.explanation) {
+                // Clean up explanation text
+                const cleanExplanation = review.explanation
+                  .replace(/\'Compliant\'|\'Partially compliant\'|\'Non-compliant\'|\'Unable to determine\'/g, '')
+                  .replace(/^\n+/, '')
+                  .trim();
+                  
+                formattedOutput += `**Explanation**: ${cleanExplanation}\n\n`;
+              }
             }
-          }
+          });
+        }
+      });
+    }
+    
+    // Add summary of compliance status
+    if (apiResult.section_reviews) {
+      formattedOutput += "## Compliance Summary\n\n";
+      
+      let totalCompliant = 0;
+      let totalPartiallyCompliant = 0;
+      let totalNonCompliant = 0;
+      let totalUndetermined = 0;
+      let totalCriteria = 0;
+      
+      Object.keys(apiResult.section_reviews).forEach(sectionKey => {
+        const sectionReviews = apiResult.section_reviews[sectionKey];
+        if (Array.isArray(sectionReviews)) {
+          sectionReviews.forEach(review => {
+            if (!review.error) {
+              totalCriteria++;
+              if (review.compliance === "Compliant") totalCompliant++;
+              else if (review.compliance === "Partially compliant") totalPartiallyCompliant++;
+              else if (review.compliance === "Non-compliant") totalNonCompliant++;
+              else if (review.compliance === "Unable to determine") totalUndetermined++;
+            }
+          });
         }
       });
       
-      // Add recommendations based on non-compliant sections
-      summary += "## Key Recommendations\n\n";
-      const allReviews = [];
-      Object.keys(reviews).forEach(sectionKey => {
-        if (Array.isArray(reviews[sectionKey])) {
-          reviews[sectionKey].forEach(review => {
+      formattedOutput += `- **Total criteria evaluated**: ${totalCriteria}\n`;
+      formattedOutput += `- **Compliant**: ${totalCompliant} (${Math.round(totalCompliant/totalCriteria*100)}%)\n`;
+      formattedOutput += `- **Partially compliant**: ${totalPartiallyCompliant} (${Math.round(totalPartiallyCompliant/totalCriteria*100)}%)\n`;
+      formattedOutput += `- **Non-compliant**: ${totalNonCompliant} (${Math.round(totalNonCompliant/totalCriteria*100)}%)\n`;
+      formattedOutput += `- **Unable to determine**: ${totalUndetermined} (${Math.round(totalUndetermined/totalCriteria*100)}%)\n\n`;
+    }
+    
+    // Add recommendations section based on non-compliant and partially compliant items
+    if (apiResult.section_reviews) {
+      formattedOutput += "## Key Recommendations\n\n";
+      
+      const allIssues = [];
+      Object.keys(apiResult.section_reviews).forEach(sectionKey => {
+        const sectionReviews = apiResult.section_reviews[sectionKey];
+        if (Array.isArray(sectionReviews)) {
+          sectionReviews.forEach(review => {
             if (!review.error && (review.compliance === "Non-compliant" || review.compliance === "Partially compliant")) {
-              allReviews.push({
-                section: sectionKey.replace(/_/g, ' '),
+              allIssues.push({
+                section: sectionKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
                 ...review
               });
             }
@@ -132,48 +170,44 @@ function useChat() {
         }
       });
       
-      // Sort reviews by compliance (non-compliant first)
-      allReviews.sort((a, b) => {
+      // Sort issues (non-compliant first)
+      allIssues.sort((a, b) => {
         if (a.compliance === "Non-compliant" && b.compliance !== "Non-compliant") return -1;
         if (a.compliance !== "Non-compliant" && b.compliance === "Non-compliant") return 1;
         return 0;
       });
       
-      // Take top 5 issues to recommend
-      const topIssues = allReviews.slice(0, 5);
-      if (topIssues.length > 0) {
-        topIssues.forEach((review, index) => {
-          summary += `${index + 1}. **${review.section}**: ${review.criterion}\n`;
-          if (review.explanation) {
-            const cleanExplanation = review.explanation
+      if (allIssues.length > 0) {
+        allIssues.forEach((issue, index) => {
+          formattedOutput += `### ${index + 1}. ${issue.section} - ${issue.criterion}\n\n`;
+          formattedOutput += `**Status**: ${issue.compliance}\n\n`;
+          
+          if (issue.explanation) {
+            const cleanExplanation = issue.explanation
               .replace(/\'Partially compliant\'|\'Non-compliant\'/g, '')
-              .replace(/\n\n/g, ' ')
+              .replace(/^\n+/, '')
               .trim();
-            summary += `   - ${cleanExplanation}\n`;
+              
+            formattedOutput += `**Recommendation**: Address the following issue: ${cleanExplanation}\n\n`;
           }
         });
       } else {
-        summary += "No specific recommendations - all reviewed sections are compliant.\n";
+        formattedOutput += "No significant issues identified - all reviewed sections are compliant.\n\n";
       }
-      
-      return summary;
     }
     
-    // Fallback response if the structure doesn't match expected format
-    return "I've reviewed your document, but the structure wasn't in the expected format. Please contact support for assistance.";
+    return formattedOutput;
   };
 
   // This is our updated handleSubmit that better handles API responses
+
   const handleSubmit = (e, messageContent, files, apiResult) => {
-    e?.preventDefault(); // Added optional chaining for cases where e might be undefined
+    e?.preventDefault();
     
-    // Don't process if there's nothing to send (defensive check)
     if (!messageContent && (!files || files.length === 0) && !apiResult) return;
     
-    // Prepare display content for the message
     let displayContent = messageContent || '';
     
-    // If we have files, add their names to the display content
     if (files && files.length > 0) {
       const fileNames = files.map(file => file.name).join(', ');
       displayContent += displayContent ? 
@@ -181,7 +215,6 @@ function useChat() {
         `Uploading files: ${fileNames}`;
     }
     
-    // Only add a user message if we have content or files to display
     if (displayContent) {
       setMessages(prev => [
         ...prev,
@@ -194,22 +227,65 @@ function useChat() {
       ]);
     }
     
-    // Add AI response if we have an API result
     if (apiResult) {
-      const formattedResponse = formatApiResult(apiResult);
       setMessages(prev => [
         ...prev,
         {
           id: prev.length + 1,
           role: 'assistant',
-          content: formattedResponse
+          content: apiResult.content || formatApiResult(apiResult)
         }
       ]);
     }
     
-    // Clear input
     setInput('');
   };
+  // const handleSubmit = (e, messageContent, files, apiResult) => {
+  //   e?.preventDefault(); // Added optional chaining for cases where e might be undefined
+    
+  //   // Don't process if there's nothing to send (defensive check)
+  //   if (!messageContent && (!files || files.length === 0) && !apiResult) return;
+    
+  //   // Prepare display content for the message
+  //   let displayContent = messageContent || '';
+    
+  //   // If we have files, add their names to the display content
+  //   if (files && files.length > 0) {
+  //     const fileNames = files.map(file => file.name).join(', ');
+  //     displayContent += displayContent ? 
+  //       ` (Attached files: ${fileNames})` : 
+  //       `Uploading files: ${fileNames}`;
+  //   }
+    
+  //   // Only add a user message if we have content or files to display
+  //   if (displayContent) {
+  //     setMessages(prev => [
+  //       ...prev,
+  //       {
+  //         id: prev.length + 1,
+  //         role: 'user',
+  //         content: displayContent,
+  //         files: files && files.length > 0 ? [...files] : undefined
+  //       }
+  //     ]);
+  //   }
+    
+  //   // Add AI response if we have an API result
+  //   if (apiResult) {
+  //     const formattedResponse = formatApiResult(apiResult);
+  //     setMessages(prev => [
+  //       ...prev,
+  //       {
+  //         id: prev.length + 1,
+  //         role: 'assistant',
+  //         content: formattedResponse
+  //       }
+  //     ]);
+  //   }
+    
+  //   // Clear input
+  //   setInput('');
+  // };
 
   const startNewChat = () => {
     setMessages([{ id: 1, role: 'assistant', content: createGreeting() }]);
@@ -222,7 +298,8 @@ function useChat() {
     isLoading,
     handleSubmit,
     startNewChat,
-    messagesEndRef
+    messagesEndRef,
+    formatApiResult
   };
 }
 
