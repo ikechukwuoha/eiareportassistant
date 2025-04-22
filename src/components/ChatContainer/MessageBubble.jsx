@@ -1,33 +1,109 @@
-import { User } from 'lucide-react';
+import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { UserIcon } from 'lucide-react';
+import Avatar from '../UI/Avatar';
 
 export default function MessageBubble({ message }) {
-  const isUser = message.role === 'user';
+  const [expanded, setExpanded] = useState(false);
+  
+  const isUserMessage = message.role === 'user';
+  const hasLongContent = message.content.length > 1000;
+  
+  // Function to handle file downloads if needed
+  const handleFileDownload = (file) => {
+    // Implementation would depend on how files are stored
+    console.log(`Download file: ${file.name}`);
+    // Create object URL or fetch from server
+  };
   
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className="flex items-start max-w-md">
-        {!isUser && (
-          <div className="mr-3 bg-green-600 text-white h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M8 15C11.866 15 15 11.866 15 8C15 4.13401 11.866 1 8 1C4.13401 1 1 4.13401 1 8C1 11.866 4.13401 15 8 15Z" fill="currentColor"/>
-              <path d="M5.5 8.5L7 10L10.5 6.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+    <div className={`flex ${isUserMessage ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-3/4 flex ${isUserMessage ? 'flex-row-reverse' : 'flex-row'} gap-3`}>
+        {/* Avatar */}
+        {isUserMessage ? (
+          <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
+            <UserIcon size={16} className="text-white" />
           </div>
+        ) : (
+          <Avatar size="sm" />
         )}
+        
+        {/* Message content */}
         <div 
-          className={`p-4 rounded-lg ${
-            isUser 
-              ? 'bg-green-600 text-white rounded-br-none' 
-              : 'bg-white border border-gray-200 shadow-sm rounded-bl-none'
+          className={`py-3 px-4 rounded-lg ${
+            isUserMessage 
+              ? 'bg-green-600 text-white' 
+              : 'bg-white border border-gray-200'
           }`}
         >
-          <p className="text-sm md:text-base whitespace-pre-wrap">{message.content}</p>
+          {/* Show only preview if content is long and not expanded */}
+          {hasLongContent && !expanded ? (
+            <>
+              <div className="prose max-w-none">
+                <ReactMarkdown>
+                  {message.content.substring(0, 1000) + '...'}
+                </ReactMarkdown>
+              </div>
+              <button 
+                onClick={() => setExpanded(true)}
+                className={`mt-2 text-sm font-medium ${
+                  isUserMessage ? 'text-green-100' : 'text-green-600'
+                }`}
+              >
+                Show more
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="prose max-w-none">
+                <ReactMarkdown>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
+              {hasLongContent && (
+                <button 
+                  onClick={() => setExpanded(false)}
+                  className={`mt-2 text-sm font-medium ${
+                    isUserMessage ? 'text-green-100' : 'text-green-600'
+                  }`}
+                >
+                  Show less
+                </button>
+              )}
+            </>
+          )}
+          
+          {/* Display file attachments if any */}
+          {message.files && message.files.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <div className={`text-sm ${isUserMessage ? 'text-green-100' : 'text-gray-500'}`}>
+                Attachments:
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {message.files.map((file, index) => (
+                  <div 
+                    key={index} 
+                    className={`py-1 px-3 rounded-full text-xs flex items-center ${
+                      isUserMessage 
+                        ? 'bg-green-500 text-white' 
+                        : 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    <span className="truncate max-w-xs">{file.name}</span>
+                    {!isUserMessage && (
+                      <button 
+                        onClick={() => handleFileDownload(file)}
+                        className="ml-2 text-green-600 hover:text-green-700"
+                      >
+                        Download
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        {isUser && (
-          <div className="ml-3 bg-green-100 text-green-600 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
-            <User size={16} />
-          </div>
-        )}
       </div>
     </div>
   );
