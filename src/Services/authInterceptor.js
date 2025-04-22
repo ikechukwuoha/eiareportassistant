@@ -63,7 +63,7 @@ import axios from 'axios';
 
 // Create axios instance with proper configuration
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: 'https://eiareportassistantbackend.onrender.com',
   withCredentials: true, // This sets credentials: 'include' for cross-origin requests
 });
 
